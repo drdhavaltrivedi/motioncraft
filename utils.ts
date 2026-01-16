@@ -130,6 +130,22 @@ export const TYPOGRAPHY_SUGGESTIONS = [
   { id: 'retro-80s', label: 'Retro 80s', prompt: 'Chrome-plated, synthwave style typography with horizon lines and sparkles' },
   { id: 'liquid-metal', label: 'Liquid Metal', prompt: 'Fluid, melting chrome typography, surreal and reflective' },
   { id: 'botanical', label: 'Botanical', prompt: 'Typography intertwined with vines, flowers, and organic nature elements' },
+  { id: 'futuristic', label: 'Futuristic', prompt: 'Sleek, geometric typography with holographic effects and digital glows' },
+  { id: 'vintage', label: 'Vintage', prompt: 'Classic retro typography with distressed textures and aged patina' },
+  { id: 'minimalist', label: 'Minimalist', prompt: 'Clean, simple typography with subtle shadows and elegant spacing' },
+  { id: 'grunge', label: 'Grunge', prompt: 'Rough, textured typography with paint splatters and urban decay' },
+  { id: 'elegant-script', label: 'Elegant Script', prompt: 'Sophisticated calligraphy with flowing curves and graceful flourishes' },
+  { id: 'tech-digital', label: 'Tech Digital', prompt: 'Pixelated, digital typography with matrix-style effects and data streams' },
+  { id: 'organic', label: 'Organic', prompt: 'Natural, flowing typography that blends seamlessly with organic textures' },
+  { id: 'metallic', label: 'Metallic', prompt: 'Polished metal typography with chrome reflections and industrial strength' },
+  { id: 'glitch', label: 'Glitch', prompt: 'Distorted, glitchy typography with digital artifacts and color shifts' },
+  { id: 'watercolor', label: 'Watercolor', prompt: 'Soft, blended watercolor typography with artistic brush strokes' },
+  { id: 'neon-glow', label: 'Neon Glow', prompt: 'Bright neon typography with intense glow and electric energy' },
+  { id: 'stone-carved', label: 'Stone Carved', prompt: 'Ancient stone-carved typography with weathered textures and depth' },
+  { id: 'ice-crystal', label: 'Ice Crystal', prompt: 'Frozen crystal typography with icy reflections and frost effects' },
+  { id: 'fire-flame', label: 'Fire Flame', prompt: 'Burning flame typography with dynamic fire effects and heat distortion' },
+  { id: 'glass', label: 'Glass', prompt: 'Transparent glass typography with reflections, refractions, and light play' },
+  { id: 'wood', label: 'Wood', prompt: 'Natural wood grain typography with carved textures and organic warmth' },
 ];
 
 // History Management

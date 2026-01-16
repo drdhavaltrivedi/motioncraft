@@ -5,7 +5,7 @@
 */
 
 import { GoogleGenAI } from "@google/genai";
-import { cleanBase64 } from "../utils";
+import { cleanBase64, getRandomStyle } from "../utils";
 
 // Helper to ensure we always get a fresh instance with the latest key
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -48,18 +48,25 @@ const createBlankImage = (width: number, height: number): string => {
   return cleanBase64(dataUrl);
 };
 
+// Fast style suggestion with simplified prompt and reduced retries
 export const generateStyleSuggestion = async (text: string): Promise<string> => {
-  return withRetry(async () => {
+  // Use a faster, simpler approach with minimal retries for speed
+  try {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Generate a single, creative, short (10-15 words) visual art direction description for a cinematic text animation of the word/phrase: "${text}". 
-      Focus on material, lighting, and environment. 
-      Examples: "Formed by fluffy white clouds in a deep blue sky", "Glowing neon signs reflected in a rainy street", "Carved from ancient stone in a mossy forest".
-      Output ONLY the description.`
+      contents: `Cinematic style for "${text}" in 10 words: material, lighting, environment. Output description only.`,
+      config: {
+        temperature: 0.9,
+        maxOutputTokens: 50, // Limit output for speed
+      }
     });
-    return response.text?.trim() || "";
-  });
+    return response.text?.trim() || getRandomStyle();
+  } catch (error: any) {
+    // Fallback to random style if AI fails (fast fallback)
+    console.warn('Style suggestion failed, using random style:', error);
+    return getRandomStyle();
+  }
 };
 
 interface TextImageOptions {

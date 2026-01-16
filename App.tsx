@@ -450,7 +450,7 @@ const App: React.FC = () => {
             <div className="space-y-5">
               <label className="text-xs font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-wider block">Typography</label>
               <textarea value={typographyPrompt} onChange={(e) => setTypographyPrompt(e.target.value)} placeholder="Font aesthetic..." className="w-full bg-stone-50 dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-xl p-3 text-sm h-24 resize-none text-stone-900 dark:text-white outline-none" />
-              <div className="flex flex-wrap gap-1.5">{TYPOGRAPHY_SUGGESTIONS.slice(0, 4).map(opt => <button key={opt.id} type="button" onClick={() => setTypographyPrompt(opt.prompt)} className="px-2 py-1 bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-stone-300 text-[10px] font-medium rounded border border-stone-200 dark:border-zinc-700 hover:bg-stone-200 dark:hover:bg-zinc-700 transition-colors">{opt.label}</button>)}</div>
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-1">{TYPOGRAPHY_SUGGESTIONS.map(opt => <button key={opt.id} type="button" onClick={() => setTypographyPrompt(opt.prompt)} className="px-2 py-1 bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-stone-300 text-[10px] font-medium rounded border border-stone-200 dark:border-zinc-700 hover:bg-stone-200 dark:hover:bg-zinc-700 transition-colors whitespace-nowrap">{opt.label}</button>)}</div>
               
               <label className="text-xs font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-wider block">Reference Image (Optional)</label>
               <div className="flex items-center gap-3">
