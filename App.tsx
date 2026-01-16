@@ -7,11 +7,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState } from './types';
 import { generateTextImage, generateTextVideo, generateStyleSuggestion } from './services/geminiService';
-import { getRandomStyle, fileToBase64, TYPOGRAPHY_SUGGESTIONS, createGifFromVideo } from './utils';
+import { getRandomStyle, fileToBase64, TYPOGRAPHY_SUGGESTIONS, createGifFromVideo, saveToHistory, getHistory, clearHistory, removeHistoryItem, formatHistoryDate, type HistoryItem } from './utils';
 import { 
   Loader2, Paintbrush, Play, Type, Sparkles, Image as ImageIcon, X, Upload, 
   Download, FileType, Wand2, Volume2, VolumeX, ChevronLeft, ChevronRight, 
-  ArrowLeft, Video as VideoIcon, Key, Sun, Moon
+  ArrowLeft, Video as VideoIcon, Key, Sun, Moon, History, Trash2
 } from 'lucide-react';
 
 interface Video {
@@ -76,6 +76,80 @@ const ApiKeyDialog: React.FC<{ isOpen: boolean; onClose: () => void; onSelect: (
   );
 };
 
+const HistoryPanel: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  historyItems: HistoryItem[]; 
+  onLoadItem: (item: HistoryItem) => void;
+  onRemoveItem: (id: string, e: React.MouseEvent) => void;
+  onClear: () => void;
+}> = ({ isOpen, onClose, historyItems, onLoadItem, onRemoveItem, onClear }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
+      <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden border border-stone-100 dark:border-zinc-800 animate-in zoom-in-95 duration-300 flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="p-6 border-b border-stone-200 dark:border-zinc-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+              <History className="text-blue-600 dark:text-blue-500" size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-stone-900 dark:text-white">Generation History</h2>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{historyItems.length} saved {historyItems.length === 1 ? 'item' : 'items'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {historyItems.length > 0 && (
+              <button onClick={onClear} className="px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex items-center gap-1.5">
+                <Trash2 size={14} /> Clear All
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 hover:bg-stone-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
+              <X size={20} className="text-stone-600 dark:text-stone-400" />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6">
+          {historyItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <History className="text-stone-300 dark:text-zinc-700 mb-4" size={48} />
+              <p className="text-stone-500 dark:text-stone-400 font-medium">No history yet</p>
+              <p className="text-sm text-stone-400 dark:text-stone-500 mt-1">Your generated animations will appear here</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {historyItems.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => onLoadItem(item)}
+                  className="group relative bg-stone-50 dark:bg-zinc-900 rounded-xl overflow-hidden border border-stone-200 dark:border-zinc-800 hover:border-stone-300 dark:hover:border-zinc-700 cursor-pointer transition-all hover:shadow-lg"
+                >
+                  <div className="aspect-video bg-stone-100 dark:bg-zinc-800 relative">
+                    <img src={item.imageSrc} alt={item.text} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <button
+                      onClick={(e) => onRemoveItem(item.id, e)}
+                      className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={14} className="text-white" />
+                    </button>
+                  </div>
+                  <div className="p-3">
+                    <p className="font-bold text-sm text-stone-900 dark:text-white line-clamp-1 mb-1">{item.text}</p>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 mb-2">{item.style}</p>
+                    <p className="text-[10px] text-stone-400 dark:text-stone-500">{formatHistoryDate(item.timestamp)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const HeroCarousel: React.FC<{ forceMute: boolean }> = ({ forceMute }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
@@ -115,6 +189,8 @@ const App: React.FC = () => {
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [viewMode, setViewMode] = useState<'gallery' | 'create'>('gallery');
   const [showKeyDialog, setShowKeyDialog] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
     if (saved) return saved === 'dark';
@@ -154,6 +230,11 @@ const App: React.FC = () => {
     } else {
       document.documentElement.classList.remove('dark');
     }
+  }, []);
+
+  // Load history on mount
+  useEffect(() => {
+    setHistoryItems(getHistory());
   }, []);
 
   useEffect(() => {
@@ -222,6 +303,19 @@ const App: React.FC = () => {
       const videoUrl = await generateTextVideo(inputText, b64Image, mimeType, styleToUse);
       setVideoSrc(videoUrl);
       setState(AppState.PLAYING);
+      
+      // Save to history
+      saveToHistory({
+        text: inputText,
+        style: styleToUse,
+        typographyPrompt: typographyPrompt || '',
+        imageSrc: `data:${mimeType};base64,${b64Image}`,
+        videoUrl: videoUrl,
+        mimeType: mimeType,
+      });
+      
+      // Refresh history list
+      setHistoryItems(getHistory());
     } catch (err: any) {
       console.error(err);
       if (err.message && err.message.includes("Requested entity was not found.")) {
@@ -257,6 +351,33 @@ const App: React.FC = () => {
     setVideoSrc(null);
     setImageSrc(null);
     setIsGifGenerating(false);
+  };
+
+  const loadHistoryItem = (item: HistoryItem) => {
+    setInputText(item.text);
+    setInputStyle(item.style);
+    setTypographyPrompt(item.typographyPrompt);
+    setImageSrc(item.imageSrc);
+    // Note: videoUrl from history won't work if it was a blob URL, user would need to regenerate
+    if (item.videoUrl && !item.videoUrl.startsWith('blob:')) {
+      setVideoSrc(item.videoUrl);
+    }
+    setState(AppState.PLAYING);
+    setViewMode('create');
+    setShowHistory(false);
+  };
+
+  const handleClearHistory = () => {
+    if (window.confirm('Are you sure you want to clear all history?')) {
+      clearHistory();
+      setHistoryItems([]);
+    }
+  };
+
+  const handleRemoveHistoryItem = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    removeHistoryItem(id);
+    setHistoryItems(getHistory());
   };
 
   const renderAppContent = () => {
@@ -350,6 +471,14 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen w-full flex flex-col bg-stone-50 dark:bg-zinc-950 text-stone-900 dark:text-stone-100 font-sans transition-colors duration-500 overflow-x-hidden selection:bg-stone-900 selection:text-white dark:selection:bg-white dark:selection:text-zinc-900">
       <ApiKeyDialog isOpen={showKeyDialog} onClose={() => setShowKeyDialog(false)} onSelect={handleSelectKey} />
+      <HistoryPanel 
+        isOpen={showHistory} 
+        onClose={() => setShowHistory(false)} 
+        historyItems={historyItems}
+        onLoadItem={loadHistoryItem}
+        onRemoveItem={handleRemoveHistoryItem}
+        onClear={handleClearHistory}
+      />
       
       {/* Dynamic Header */}
       <nav className="fixed top-0 left-0 right-0 z-[60] px-6 py-4 flex items-center justify-between">
@@ -358,6 +487,18 @@ const App: React.FC = () => {
           <span className="hidden sm:inline text-stone-900 dark:text-white">MotionCraft</span>
         </div>
         <div className="flex items-center gap-3">
+          <button 
+            onClick={() => { setShowHistory(true); setHistoryItems(getHistory()); }} 
+            className="p-3 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-stone-200/50 dark:border-zinc-800/50 rounded-full shadow-lg text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all transform active:scale-90 relative" 
+            title="View History"
+          >
+            <History size={20} />
+            {historyItems.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {historyItems.length > 9 ? '9+' : historyItems.length}
+              </span>
+            )}
+          </button>
           <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-stone-200/50 dark:border-zinc-800/50 rounded-full shadow-lg text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all transform active:scale-90" title={isDarkMode ? "Light Mode" : "Dark Mode"}>
             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>

@@ -131,3 +131,100 @@ export const TYPOGRAPHY_SUGGESTIONS = [
   { id: 'liquid-metal', label: 'Liquid Metal', prompt: 'Fluid, melting chrome typography, surreal and reflective' },
   { id: 'botanical', label: 'Botanical', prompt: 'Typography intertwined with vines, flowers, and organic nature elements' },
 ];
+
+// History Management
+const HISTORY_STORAGE_KEY = 'motioncraft_history';
+const MAX_HISTORY_ITEMS = 20;
+
+export interface HistoryItem {
+  id: string;
+  text: string;
+  style: string;
+  typographyPrompt: string;
+  imageSrc: string; // Base64 data URL
+  videoUrl: string; // Blob URL (temporary, cleared on reload)
+  timestamp: number;
+  mimeType: string;
+}
+
+export const saveToHistory = (item: Omit<HistoryItem, 'id' | 'timestamp'>): void => {
+  try {
+    const history = getHistory();
+    const newItem: HistoryItem = {
+      ...item,
+      id: `history_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now(),
+    };
+    
+    // Add to beginning and limit to MAX_HISTORY_ITEMS
+    const updatedHistory = [newItem, ...history].slice(0, MAX_HISTORY_ITEMS);
+    
+    // Store only essential data (image as base64, but not video blob URLs)
+    const storageData = updatedHistory.map(({ videoUrl, ...rest }) => ({
+      ...rest,
+      // Don't store blob URLs as they won't work after reload
+      videoUrl: videoUrl.startsWith('blob:') ? '' : videoUrl,
+    }));
+    
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(storageData));
+  } catch (error) {
+    console.error('Failed to save to history:', error);
+    // If storage is full, try to clear old items
+    try {
+      const history = getHistory();
+      const trimmed = history.slice(0, Math.floor(MAX_HISTORY_ITEMS / 2));
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(trimmed));
+    } catch (e) {
+      console.error('Failed to trim history:', e);
+    }
+  }
+};
+
+export const getHistory = (): HistoryItem[] => {
+  try {
+    const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    return parsed.map((item: any) => ({
+      ...item,
+      // Restore empty videoUrl for blob URLs that were cleared
+      videoUrl: item.videoUrl || '',
+    }));
+  } catch (error) {
+    console.error('Failed to read history:', error);
+    return [];
+  }
+};
+
+export const clearHistory = (): void => {
+  try {
+    localStorage.removeItem(HISTORY_STORAGE_KEY);
+  } catch (error) {
+    console.error('Failed to clear history:', error);
+  }
+};
+
+export const removeHistoryItem = (id: string): void => {
+  try {
+    const history = getHistory();
+    const filtered = history.filter(item => item.id !== id);
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(filtered));
+  } catch (error) {
+    console.error('Failed to remove history item:', error);
+  }
+};
+
+export const formatHistoryDate = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+};
